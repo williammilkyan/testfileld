@@ -1,0 +1,21 @@
+IMG {
+  width: 320px;
+  height: 480px;
+  border: 1px solid black;
+}
+.image-item {
+  position: relative;
+  display: inline-block;
+  margin: 10px;
+}
+.remove-button {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background-color: red;
+  color: white;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 0 0 0 4px;
+  cursor: pointer;
+}
