@@ -19,8 +19,10 @@
       "cors": "^2.8.5",
       "express": "^4.18.2",
       "express-formidable": "^1.2.0",
+      "giflossy": "^3.0.41",
       "gifsicle": "^7.0.1",
       "mysql": "^2.18.1",
+      "optipng-bin": "^9.0.0",
       "pngquant-bin": "^8.0.1",
       "reflect-metadata": "^0.1.13",
       "typeorm": "0.3.17"

@@ -8,9 +8,9 @@ export function pressimg(temp:any) {
             compress_force: false, statistic: true,
             autoupdate: true }, false,
             {jpg: {engine: "mozjpeg", command: ["-quality", compression]}},
-            {png: {engine: "pngquant", command: ["--quality=" + compression + "-" + compression, "-o" ]}},
+            {png: {engine: 'pngcrush', command: ['-reduce', '-brute']}},
             {svg: {engine: "svgo", command: "--multipass" }},
-            {gif: {engine: "gifsicle", command: ["--colors", "64", "--use-col=web"]}},
+            {gif: {engine: 'gif2webp', command: ['-f', '80', '-mixed', '-q', '30', '-m', '2']}},
             function (error:any, completed:any, statistic: any) {
                 if(error) {
                     reject(error);
@@ -22,8 +22,10 @@ export function pressimg(temp:any) {
             temp.quality = (100 - statistic.percent) *0.01;
             temp.thumbnailPath = statistic.path_out_new;
             temp.createThumbnail = true;
+
             resolve(temp);
             }
         )
     })
 }
+

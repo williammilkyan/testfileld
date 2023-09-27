@@ -1,22 +1,25 @@
 import fileSystem from "fs";
 
 export function backUpImg (file: any, temp: any) {
-    return new Promise((resolve, reject) => { 
+    return new Promise((resolve, reject) => {
         fileSystem.readFile(file.path, function (error, data) {
             if (error) {
                 reject(error);
-            } 
-        const filePath = "public/originalimg/" + (new Date().getTime()) + "-" + file.name;       
-        fileSystem.writeFile(filePath, data, function (error){
-            if (error) {
-                reject(error);
             }
-            temp.backUpOrgPath = filePath;
-            temp.backUpOrg = true;
-            resolve(temp);
-        })   
+
+            const filePath = "public/originalimg/" + (new Date().getTime()) + "-" + file.name;       
+            fileSystem.writeFile(filePath, data, function (error){
+                if (error) {
+                    reject(error);
+                }
+
+                temp.backUpOrgPath = filePath;
+                temp.backUpOrg = true;
+
+                resolve(temp);
+            })   
+        })
     })
-})
 }
 
 export function removeImg (file: any) {
@@ -31,7 +34,8 @@ export function removeImg (file: any) {
                 }
             })
         })
-    resolve("all realated files have been removed");
+
+        resolve("all realated files have been removed");
     })
 }
 

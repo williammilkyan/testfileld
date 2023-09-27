@@ -37,43 +37,54 @@ function createImgConfig (path: string): ImgConfig {
     }
 }
 
-app.post("/compressImage", async (req: any, res: Response) =>{
-    try{
-    let config: any = [];
-    if (!AppDataSource.isInitialized) {
-        await AppDataSource.initialize();
-    }
-    for (const key in req.files) { 
-        if (req.files[key].size > 0) {
-            if (isPic(req.files[key].type)) {
-                const temp:ImgConfig = createImgConfig(req.files[key].path);
-                temp.picExt = req.files[key].type.replace('image/', ''); 
-                let backuped: any    = await backUpImg(req.files[key], temp);
-                let compressed: any  = await pressimg(backuped);
-                let uploadDB: any    = await uploaddb(compressed);
-                config.push(uploadDB);    
+app.post("/compressImage", async (req: any, res: Response) => {
+    try {
+        if (!AppDataSource.isInitialized) {
+            await AppDataSource.initialize();
+        }
+
+        const configPromises = Object.values(req.files).map(async (file: any) => {
+            if (file.size > 0) {
+                if (isPic(file.type)) {
+                    const temp: ImgConfig = createImgConfig(file.path);
+                    temp.picExt = file.type.replace('image/', '');
+
+                    // Back up the original image in the folder originalimg
+                    const backuped: any = await backUpImg(file, temp);
+
+                    // Compress the image and output it in the folder compressimg
+                    const compressed: any = await pressimg(backuped);
+
+                    // Upload all image folder information to the database
+                    const uploadDB: any = await uploaddb(compressed);
+                    return uploadDB;
+                } else {
+                    throw new Error("Please select an image in the correct format.");
+                }
             } else {
-                return res.status(400).json({Message: "please selcet a image in correct format."});
+                throw new Error("Please select a file.");
             }
-        } else {
-            return res.status(400).json({Message: "please select a file."});
-        }   
-    } //end of for loop
-    console.log(config);
-    return res.status(200).json({Status: "Success"});
-}catch (error) {
-    return res.status(500).json(error);
-}    
-})
+        });
+
+        const config = await Promise.all(configPromises);
+        console.log(config);
+        return res.status(200).json({ Status: "Success" });
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+});
+
 
 app.get("/", async (req:Request, res:Response) => {
     try{
         if (!AppDataSource.isInitialized) {
             await AppDataSource.initialize();
         }
-        const images:Images[] = await AppDataSource.manager.find(Images);        
+        const images:Images[] = await AppDataSource.manager.find(Images);    
+
         return res.status(200).json(images);
-    }catch(error){
+    }
+    catch(error){
         return res.status(500).json(error);
     }   
 });
@@ -83,15 +94,20 @@ app.delete('/clear-images', async (req:Request, res:Response) => {
         if (!AppDataSource.isInitialized) {
             await AppDataSource.initialize();
         }
+
         const images:Images[] = await AppDataSource.manager.find(Images);
+
         for(const key in images) {
             const result:any = await removeImg(images[key]);
             console.log(result);
             await AppDataSource.manager.remove(images[key]);
         }
+
         return res.status(200).json({ message: 'Images cleared successfully.' });
-        } catch (error) {
+        }
+        catch (error) {
             console.error('Error clearing images:', error);
+
             return res.status(500).json({ message: 'Internal server error.' });
         }
 });
@@ -101,16 +117,21 @@ app.delete('/delete-image/:imageId', async (req:Request, res:Response) => {
         if (!AppDataSource.isInitialized) {
             await AppDataSource.initialize();
         }
+
     const imageId:number = Number(req.params.imageId);
     const imgToBeDelete:Images = await AppDataSource.manager.findOneBy(Images, {
         id: imageId,
     });
     const result = await removeImg(imgToBeDelete);
+
     console.log(result);
     await AppDataSource.manager.remove(imgToBeDelete);
+
     return res.status(200).json({ message: 'Image deleted successfully.' });
-    } catch (error) {
+    }
+    catch (error) {
         console.error('Error deleting image:', error);
+
         return res.status(500).json({ message: 'Internal server error.' });
     }
 });
@@ -121,5 +142,6 @@ app.listen(port, () => {
 
 function isPic(image:string) {
     const ext:string = image.toLowerCase();
+    
     return (ext == 'image/jpg' || ext == 'image/png' || ext == 'image/svg' || ext == 'image/gif' || ext == 'image/jpeg' || ext == 'image/svg');
 }

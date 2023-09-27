@@ -11,5 +11,4 @@ export class Images {
 
     @Column()
     compressedImage: string = '';
-
 }
