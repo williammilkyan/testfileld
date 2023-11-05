@@ -1,93 +1,128 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
-import formidable from "express-formidable";
-import { AppDataSource } from "./dataSource";
-import { Images } from "./entity/images";
-import { backUpImg, removeImg } from "./backUpImg";
-import { pressimg } from "./pressImg";
-import { uploaddb } from "./uploadDB";
+import formidable from 'express-formidable';
+import { AppDataSource } from './dataSource';
+import { Images } from './entity/images';
+import { backUpImg, removeImg } from './backUpImg';
+import { pressimg } from './pressImg';
+import { uploaddb } from './uploadDB';
+import http from 'http';
+import { Server } from 'socket.io';
+import uniqid from 'uniqid';
 
 const app = express();
 const port = 3000;
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: 'http://localhost:5173',
+    methods: ['GET', 'POST'],
+  },
+});
 
 app.use(express.json());
 app.use(formidable());
 app.use(cors());
-app.use(express.static("public"));
+app.use(express.static('public'));
 
+// Define a configuration object for image processing
 interface ImgConfig {
-    path:            string;
-    picExt:          string;
-    quality:         number;
-    backUpOrg:       boolean;
-    backUpOrgPath:   string;
-    createThumbnail: boolean;
-    thumbnailPath:   string;
+  id: string;
+  path: string;
+  picExt: string;
+  quality: number;
+  backUpOrg: boolean;
+  backUpOrgPath: string;
+  createThumbnail: boolean;
+  thumbnailPath: string;
 }
 
-function createImgConfig (path: string): ImgConfig {
-    return {
-        path            : path,         //'/fetchFunctionEnum'
-        picExt          : '',           //['png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg']
-        quality         : 1.0,          //0.1-1.0, default is 1.0
-        backUpOrg       : false,        //default is false
-        backUpOrgPath   : 'backUpOrg',  //default is backUpOrg
-        createThumbnail : false,        //default is true
-        thumbnailPath   : 'thumbnail',  //default is thumbnail
-    }
+// Function to create ImgConfig objects
+function createImgConfig(path: string): ImgConfig {
+  return {
+    id: '',
+    path: path,
+    picExt: '',
+    quality: 1.0,
+    backUpOrg: false,
+    backUpOrgPath: 'backUpOrg',
+    createThumbnail: false,
+    thumbnailPath: 'thumbnail',
+  };
 }
 
-app.post("/compressImage", async (req: any, res: Response) => {
-    try {
-        if (!AppDataSource.isInitialized) {
-            await AppDataSource.initialize();
-        }
+// Function to handle image compression
+async function handleImageCompression(files: any, emitProgress: (data: any) => void) {
+  const progressStep = (1 / Object.keys(files).length) * 100;
+  let progress = 0;
 
-        const configPromises = Object.values(req.files).map(async (file: any) => {
-            if (file.size > 0) {
-                if (isPic(file.type)) {
-                    const temp: ImgConfig = createImgConfig(file.path);
-                    temp.picExt = file.type.replace('image/', '');
+  const configPromises = Object.values(files).map(async (file: any) => {
+    if (file.size > 0) {
+      if (isPic(file.type)) {
+        const temp: ImgConfig = createImgConfig(file.path);
+        temp.picExt = file.type.replace('image/', '');
+        temp.id = uniqid();
 
-                    // Back up the original image in the folder originalimg
-                    const backuped: any = await backUpImg(file, temp);
+        // Back up the original image
+        const backuped: any = await backUpImg(file, temp);
 
-                    // Compress the image and output it in the folder compressimg
-                    const compressed: any = await pressimg(backuped);
+        // Compress the image
+        const compressed: any = await pressimg(backuped);
 
-                    // Upload all image folder information to the database
-                    const uploadDB: any = await uploaddb(compressed);
-                    return uploadDB;
-                } else {
-                    throw new Error("Please select an image in the correct format.");
-                }
-            } else {
-                throw new Error("Please select a file.");
-            }
+        // Upload image folder information to the database
+        const uploadDB: any = await uploaddb(compressed);
+        progress = progress + progressStep;
+        emitProgress({
+          image: file.name,
+          progress: progress,
         });
+        return uploadDB;
+      } else {
+        throw new Error('Please select an image in the correct format.');
+      }
+    } else {
+      throw new Error('Please select a file.');
+    }
+  });
 
-        const config = await Promise.all(configPromises);
-        console.log(config);
-        return res.status(200).json({ Status: "Success" });
+  return Promise.all(configPromises);
+}
+
+// Middleware for handling image compression
+app.post('/compressImage', async (req: any, res: Response) => {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+
+    const emitProgress = (data: any) => {
+      io.emit('imageCompressionProgress', data);
+    };
+
+    const config = await handleImageCompression(req.files, emitProgress);
+    console.log(config);
+
+    io.emit('imageCompressionComplete', { status: 'All images compressed successfully.' });
+
+    // Handle database initialization
+    try {
+      const images: Images[] = await AppDataSource.manager.find(Images);
+      io.emit('DBInitialize', images);
     } catch (error) {
-        return res.status(500).json({ error: error.message });
+      io.emit('DBInitialize', error);
     }
+
+    return res.status(200).json({ Status: 'Success' });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
 });
 
-
-app.get("/", async (req:Request, res:Response) => {
-    try{
-        if (!AppDataSource.isInitialized) {
-            await AppDataSource.initialize();
-        }
-        const images:Images[] = await AppDataSource.manager.find(Images);    
-
-        return res.status(200).json(images);
-    }
-    catch(error){
-        return res.status(500).json(error);
-    }   
-});
+app.post('/processImage', async (req: any, res: Response) => {
+  console.log(req.files);
+  
+})
 
 app.delete('/clear-images', async (req:Request, res:Response) => {
     try {
@@ -136,12 +171,37 @@ app.delete('/delete-image/:imageId', async (req:Request, res:Response) => {
     }
 });
 
-app.listen(port, () => {
+// Socket.io connections...
+io.on('connection', async (socket) => {
+    console.log(`A user connected: ${socket.id}`);
+
+    
+    socket.emit('welcome', 'Welcome to the server.');
+
+    try{
+        if (!AppDataSource.isInitialized) {
+            await AppDataSource.initialize();
+        }
+        const images:Images[] = await AppDataSource.manager.find(Images);    
+                     
+        socket.emit('DBInitialize', images);
+        
+    }
+    catch(error){
+        socket.emit('DBInitialize', error);
+    } 
+
+    socket.on('disconnect', () => {
+        console.log('User disconnected');
+    });
+});
+
+// Server initialization...
+server.listen(port, () => {
     console.log("Server started running at port: " + port);
 })
 
-function isPic(image:string) {
-    const ext:string = image.toLowerCase();
-    
-    return (ext == 'image/jpg' || ext == 'image/png' || ext == 'image/svg' || ext == 'image/gif' || ext == 'image/jpeg' || ext == 'image/svg');
+function isPic(image: string) {
+  const ext: string = image.toLowerCase();
+  return ['image/jpg', 'image/png', 'image/svg', 'image/gif', 'image/jpeg', 'image/svg'].includes(ext);
 }

@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column } from "typeorm"
+import { Entity, PrimaryGeneratedColumn,Column } from "typeorm";
 
 @Entity()
 export class Images {
@@ -11,4 +11,11 @@ export class Images {
 
     @Column()
     compressedImage: string = '';
+
+    @Column({type: 'decimal', precision: 4, scale: 2})
+    compressRatio: number = 0;
+
+    @Column()
+    uid: string = '';
+
 }

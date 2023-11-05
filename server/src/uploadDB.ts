@@ -9,6 +9,8 @@ export function uploaddb(temp: any) {
 
         image.originalImage = temp.backUpOrgPath.replace('public/', '');
         image.compressedImage = temp.thumbnailPath.replace('public/', '');
+        image.uid = temp.id;
+        image.compressRatio = temp.quality;
         await AppDataSource.manager.save(image);
 
         console.log("Saved a new user with id: " + image.id);
