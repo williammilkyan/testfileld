@@ -20,6 +20,30 @@ function App() {
 
   const imageRef = useRef();
 
+  function dataURLToBlob(dataURL) {
+    const splitData = dataURL.split(",");
+    if (splitData.length !== 2) {
+      console.error("Invalid Data URL format");
+      return null;
+    }
+  
+    const [type, base64Data] = splitData;
+  
+    // Decode the base64 data
+    const binaryData = atob(base64Data);
+  
+    // Convert the binary data to a Uint8Array
+    const byteArray = new Uint8Array(binaryData.length);
+    for (let i = 0; i < binaryData.length; i++) {
+      byteArray[i] = binaryData.charCodeAt(i);
+    }
+  
+    // Create a Blob with the appropriate MIME type
+    const blob = new Blob([byteArray], { type: "image/png" });
+  
+    return blob;
+  }
+
   const handleImageChange = (event) => {
     const file = event.target.files[0]; 
     if (file) {
@@ -28,30 +52,32 @@ function App() {
   };
 
   const onCropComplete = (croppedArea, croppedAreaPixels) => {
-    console.log(croppedArea, croppedAreaPixels);
     setCroppedAreaPixels(croppedAreaPixels);
   }
 
   const onCrop = async () => {
     const croppedImageUrl = await getCroppedImg(selectedImage, croppedAreaPixels);
     setCroppedResult(croppedImageUrl);
-    console.log(croppedImageUrl);
   }
 
   const captureImage = () => {
     html2canvas(imageRef.current).then((canvas) => {
       const imageUrl = canvas.toDataURL(croppedResult);
-      setWatermarkedImage(imageUrl);
       console.log(imageUrl);
+      setWatermarkedImage(imageUrl);
     });
   };
 
   const handleUpload = () => {
     if (watermarkedImage) { 
       const formData = new FormData();
-      formData.append('image', watermarkedImage);
+      const imageBlob = dataURLToBlob(watermarkedImage);
+      console.log(imageBlob);
+      
 
-      axios.post('http://localhost:3000/processImage', formData)
+      formData.append("image", imageBlob);
+
+      axios.post('http://localhost:3000/compressImage', formData)
         .then((res) => {
           if (res.data.Status === 'Success') {
             console.log('Succeeded');
