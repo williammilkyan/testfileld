@@ -7,6 +7,7 @@ import './app.css';
 function Upload() {
   const [selectedImages, setSelectedImages] = useState([]);
   const [data, setData] = useState([]);
+  const [email, setEmail] = useState('williammilkyan@hotmail.com');
 
   const handleImageChange = (event) => {
     const files = event.target.files;
@@ -17,7 +18,7 @@ function Upload() {
   };
 
   useEffect(() => {
-    axios.get('http://localhost:3800/images/williammilkyan@hotmail.com')
+    axios.get(`http://localhost:3800/images/${email}`)
       .then((res) => {
         console.log(res.data);
         setData(res.data);
@@ -31,7 +32,7 @@ function Upload() {
       formData.append(`images[${i}]`, image);
     });
 
-    axios.post('http://localhost:3800/images/williammilkyan@hotmail.com', formData)
+    axios.post(`http://localhost:3800/images/${email}`, formData)
       .then((res) => {
         if (res.status === 200) {
           console.log('Succeeded');
@@ -56,7 +57,7 @@ function Upload() {
 
   const handleClearImages = async () => {
     try {
-      const response = await axios.delete('http://localhost:3800/image/williammilkyan@hotmail.com/clear-images');
+      const response = await axios.delete(`http://localhost:3800/image/${email}/clear-images`);
       if (response.status === 200) {
         console.log('Images cleared successfully.');
         
@@ -71,7 +72,7 @@ function Upload() {
   const removeDBImage = async (imageUrl) => {
 
     try {
-      const response = await axios.delete(`http://localhost:3800/image/williammilkyan@hotmail.com/${imageUrl}`);
+      const response = await axios.delete(`http://localhost:3800/image/${email}/${imageUrl}`);
       if (response.status === 200) {
         console.log('Image deleted successfully.');
         
@@ -87,6 +88,9 @@ function Upload() {
     <div className="App">
       
       <div className="preview">
+        <h4>Please set your email:</h4>
+        <input type="text" value={email} onChange={e => setEmail(e.target.value)} />
+        <h4>{email}</h4>
         <h4>Please Select the Images</h4>
         <input type="file" accept="image/*" multiple onChange={handleImageChange} />
         <div className="image-preview">
