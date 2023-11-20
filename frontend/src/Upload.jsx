@@ -7,7 +7,7 @@ import './app.css';
 function Upload() {
   const [selectedImages, setSelectedImages] = useState([]);
   const [data, setData] = useState([]);
-  const [email, setEmail] = useState('williammilkyan@hotmail.com');
+  const [email, setEmail] = useState('william4@gmail.com');
 
   const handleImageChange = (event) => {
     const files = event.target.files;
@@ -69,10 +69,10 @@ function Upload() {
     }
   };
 
-  const removeDBImage = async (imageUrl) => {
+  const removeDBImage = async (index) => {
 
     try {
-      const response = await axios.delete(`http://localhost:3800/image/${email}/${imageUrl}`);
+      const response = await axios.delete(`http://localhost:3800/images/${email}/${index}`);
       if (response.status === 200) {
         console.log('Image deleted successfully.');
         
@@ -114,10 +114,11 @@ function Upload() {
         <h4>Images In DataBase:</h4>
         <button onClick={handleClearImages}>Clear</button>
         <div>
-          {data.length > 0 && (data.map((image, index) => (
+          {data.length > 0 && (data.map((element, index) => (
             <div key={index} className="image-item">
-              <img src={`http://localhost:3800/${image}`} alt={`Preview ${index}`} className="img-thumbnail" />
-              <button className="remove-button" onClick={() => removeDBImage(image)}>X</button>
+              <img src={`http://localhost:3800/${element.imageURL}`} alt={`Preview ${index}`} className="img-thumbnail" />
+              <h4>Upload @{element.createAt}</h4>
+              <button className="remove-button" onClick={() => removeDBImage(element.imageId)}>X</button>
             </div>
           )))}
         </div>

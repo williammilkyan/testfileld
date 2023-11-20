@@ -6,5 +6,6 @@ import Upload from './Upload.jsx';
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <Upload />
+    <App />
   </React.StrictMode>,
 )
